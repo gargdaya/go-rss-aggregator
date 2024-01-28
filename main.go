@@ -1,15 +1,22 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/gargdaya/rssagg/internal/database"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
+
+	_ "github.com/lib/pq"
 )
 
+type apiConfig struct {
+	DB *database.Queries
+}
 
 func main() {
 
@@ -19,6 +26,26 @@ func main() {
 	if port == "" {
 		port = "8000"
 	}
+
+
+	// DB Connection and Queries config
+
+	dbURL := os.Getenv("DB_URL")
+
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
+
+	conn, error := sql.Open("postgres", dbURL)
+
+	if error != nil {
+		log.Fatal(error)
+	}
+
+	apiCfg := apiConfig{
+		DB: database.New(conn),
+	}
+
 
 	router := chi.NewRouter()
 
@@ -35,6 +62,13 @@ func main() {
 
 	v1Router.Get("/healthz", handlerReadiness)
 	v1Router.Get("/err", handlerErr)
+	v1Router.Post("/users", apiCfg.handlerCreateUser)
+	v1Router.Get("/users", apiCfg.authMiddleware(apiCfg.handlerGetUser))
+	v1Router.Post("/feeds", apiCfg.authMiddleware(apiCfg.handlerCreateFeed))
+	v1Router.Get("/feeds", apiCfg.handlerGetAllFeeds)
+	v1Router.Post("/feed-follows", apiCfg.authMiddleware(apiCfg.handlerCreateFeedFollow))
+	v1Router.Get("/feed-follows", apiCfg.authMiddleware(apiCfg.handlerGetFeedFollows))
+	v1Router.Delete("/feed-follows/{feedFollowId}", apiCfg.authMiddleware(apiCfg.handlerDeleteFeedFollow))
 
 	router.Mount("/v1", v1Router)
 
@@ -42,6 +76,9 @@ func main() {
 		Handler: router,
 		Addr: ":" + port,
 	}
+
+	
+
 	log.Println("Server running on http://localhost:" + port)
 	err := server.ListenAndServe()
 
