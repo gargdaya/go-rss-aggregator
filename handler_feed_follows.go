@@ -5,11 +5,11 @@ import (
 	"net/http"
 
 	"github.com/gargdaya/rssagg/internal/database"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
-func (cfg *apiConfig) handlerCreateFeedFollow(w http.ResponseWriter, r *http.Request, user database.User){
+func (cfg *apiConfig) handlerCreateFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
 	type parameters struct {
 		FeedId uuid.UUID `json:"feed_id"`
 	}
@@ -23,7 +23,7 @@ func (cfg *apiConfig) handlerCreateFeedFollow(w http.ResponseWriter, r *http.Req
 	}
 
 	feedFollow, err := cfg.DB.CreateFeedFollow(r.Context(), database.CreateFeedFollowParams{
-		ID: uuid.New(),
+		ID:     uuid.New(),
 		UserID: user.ID,
 		FeedID: params.FeedId,
 	})
@@ -31,7 +31,7 @@ func (cfg *apiConfig) handlerCreateFeedFollow(w http.ResponseWriter, r *http.Req
 	respondWithJson(w, http.StatusCreated, databaseFeedFollowToFeedFollow(feedFollow))
 }
 
-func (cfg *apiConfig) handlerGetFeedFollows(w http.ResponseWriter, r *http.Request, user database.User){
+func (cfg *apiConfig) handlerGetFeedFollows(w http.ResponseWriter, r *http.Request, user database.User) {
 	feedFollows, err := cfg.DB.GetFeedFollows(r.Context(), user.ID)
 	if err != nil {
 		respondWithError(w, http.StatusBadGateway, err.Error())
@@ -40,8 +40,8 @@ func (cfg *apiConfig) handlerGetFeedFollows(w http.ResponseWriter, r *http.Reque
 	respondWithJson(w, http.StatusOK, databaseFeedFollowsToFeedFollows(feedFollows))
 }
 
-func (cfg *apiConfig) handlerDeleteFeedFollow(w http.ResponseWriter, r *http.Request, user database.User){
-	feedFollowIdStr :=chi.URLParam(r, "feedFollowId")
+func (cfg *apiConfig) handlerDeleteFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
+	feedFollowIdStr := chi.URLParam(r, "feedFollowId")
 
 	feedFollowId, err := uuid.Parse(feedFollowIdStr)
 	if err != nil {
@@ -50,7 +50,7 @@ func (cfg *apiConfig) handlerDeleteFeedFollow(w http.ResponseWriter, r *http.Req
 	}
 
 	err = cfg.DB.DeleteFeedFollow(r.Context(), database.DeleteFeedFollowParams{
-		ID: feedFollowId,
+		ID:     feedFollowId,
 		UserID: user.ID,
 	})
 	if err != nil {

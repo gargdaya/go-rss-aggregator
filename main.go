@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gargdaya/rssagg/internal/database"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 
