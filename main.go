@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gargdaya/rssagg/internal/database"
 	"github.com/go-chi/chi"
@@ -27,7 +28,6 @@ func main() {
 		port = "8000"
 	}
 
-
 	// DB Connection and Queries config
 
 	dbURL := os.Getenv("DB_URL")
@@ -46,26 +46,33 @@ func main() {
 		DB: database.New(conn),
 	}
 
+	go startScraping(apiCfg.DB, 10, time.Minute*5)
 
 	router := chi.NewRouter()
 
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"https://*", "http://*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"*"},
-		ExposedHeaders: []string{"Link"},
+		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
-		MaxAge: 300,
+		MaxAge:           300,
 	}))
 
 	v1Router := chi.NewRouter()
 
 	v1Router.Get("/healthz", handlerReadiness)
+
 	v1Router.Get("/err", handlerErr)
+
 	v1Router.Post("/users", apiCfg.handlerCreateUser)
 	v1Router.Get("/users", apiCfg.authMiddleware(apiCfg.handlerGetUser))
+
 	v1Router.Post("/feeds", apiCfg.authMiddleware(apiCfg.handlerCreateFeed))
 	v1Router.Get("/feeds", apiCfg.handlerGetAllFeeds)
+
+	v1Router.Get("/posts", apiCfg.authMiddleware(apiCfg.handlerGetPostsForUser))
+
 	v1Router.Post("/feed-follows", apiCfg.authMiddleware(apiCfg.handlerCreateFeedFollow))
 	v1Router.Get("/feed-follows", apiCfg.authMiddleware(apiCfg.handlerGetFeedFollows))
 	v1Router.Delete("/feed-follows/{feedFollowId}", apiCfg.authMiddleware(apiCfg.handlerDeleteFeedFollow))
@@ -74,10 +81,8 @@ func main() {
 
 	server := &http.Server{
 		Handler: router,
-		Addr: ":" + port,
+		Addr:    ":" + port,
 	}
-
-	
 
 	log.Println("Server running on http://localhost:" + port)
 	err := server.ListenAndServe()
